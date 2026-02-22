@@ -1,8 +1,59 @@
+import { useState } from "react";
+
 export default function Home() {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setResult(null);
+
+    if (!files.length) return setError("Select 1–2 photos.");
+
+    const form = new FormData();
+    Array.from(files).slice(0, 2).forEach((f) => form.append("images", f));
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/listings/create", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Request failed");
+      setResult(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <main style={{ fontFamily: "system-ui", padding: 24 }}>
-      <h1>Allister</h1>
-      <p>Deployed.</p>
+    <main style={{ fontFamily: "system-ui", padding: 24, maxWidth: 720, margin: "0 auto" }}>
+      <h1 style={{ marginBottom: 8 }}>Allister</h1>
+      <p style={{ marginTop: 0, opacity: 0.8 }}>Upload 1–2 photos → get a structured listing.</p>
+
+      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => setFiles(e.target.files)}
+        />
+        <button disabled={loading} style={{ padding: 12, cursor: "pointer" }}>
+          {loading ? "Processing..." : "Generate Listing"}
+        </button>
+      </form>
+
+      {error && <p style={{ color: "crimson" }}>{error}</p>}
+
+      {result && (
+        <div style={{ marginTop: 16, padding: 16, border: "1px solid #ddd", borderRadius: 10 }}>
+          <h2 style={{ marginTop: 0 }}>Result</h2>
+          <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(result, null, 2)}</pre>
+        </div>
+      )}
     </main>
   );
 }
