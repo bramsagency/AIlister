@@ -35,8 +35,17 @@ Array.from(files).slice(0, 6).forEach((f) => form.append("images", f));
     setLoading(true);
     try {
       const res = await fetch("/api/listings/create", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Request failed");
+const text = await res.text();
+
+let data;
+try {
+  data = JSON.parse(text);
+} catch {
+  throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`);
+}
+
+if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+setResult(data);
       setResult(data);
     } catch (err) {
       setError(err.message);
