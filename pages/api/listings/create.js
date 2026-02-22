@@ -1,3 +1,4 @@
+// pages/api/listings/create.js
 import OpenAI from "openai";
 import { supabaseServer } from "../../../lib/supabase-server";
 import { parseMultipart } from "../../../lib/parse-multipart";
@@ -6,16 +7,22 @@ export const config = {
   api: { bodyParser: false },
 };
 
+function asBool(v) {
+  const s = Array.isArray(v) ? v[0] : v;
+  return s === "1" || s === "true" || s === "on" || s === "yes";
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-    const { images } = await parseMultipart(req);
+    const { fields, images } = await parseMultipart(req);
+    const removeBg = asBool(fields?.remove_bg);
+
     if (!images?.length) return res.status(400).json({ error: "Select 1–2 images." });
 
     const sb = supabaseServer();
 
-    // Upload images to Supabase Storage bucket: listing-images
     const uploaded = [];
     for (const file of images.slice(0, 2)) {
       const safeName = (file.originalFilename || "image").replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -84,7 +91,7 @@ export default async function handler(req, res) {
 
     if (insertErr) throw insertErr;
 
-    return res.status(200).json(saved);
+    return res.status(200).json({ ...saved, remove_bg: removeBg });
   } catch (e) {
     return res.status(500).json({ error: e.message || "Server error" });
   }
