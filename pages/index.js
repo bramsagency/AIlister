@@ -1,5 +1,5 @@
 // pages/index.js
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function Home() {
   const [files, setFiles] = useState([]);
@@ -7,6 +7,18 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+
+  const previews = useMemo(() => {
+    return Array.from(files || []).slice(0, 2).map((f) => ({
+      key: `${f.name}-${f.size}-${f.lastModified}`,
+      name: f.name,
+      url: URL.createObjectURL(f),
+    }));
+  }, [files]);
+
+  useEffect(() => {
+    return () => previews.forEach((p) => URL.revokeObjectURL(p.url));
+  }, [previews]);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -38,12 +50,29 @@ export default function Home() {
       <p style={{ marginTop: 0, opacity: 0.8 }}>Upload 1–2 photos → get a structured listing.</p>
 
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => setFiles(e.target.files)}
-        />
+        <input type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} />
+
+        {previews.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+            {previews.map((p) => (
+              <div
+                key={p.key}
+                style={{
+                  border: "1px solid #ddd",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  aspectRatio: "1 / 1",
+                }}
+              >
+                <img
+                  src={p.url}
+                  alt={p.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
         <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <input
