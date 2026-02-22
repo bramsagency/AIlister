@@ -19,12 +19,12 @@ export default async function handler(req, res) {
     const { fields, images } = await parseMultipart(req);
     const removeBg = asBool(fields?.remove_bg);
 
-    if (!images?.length) return res.status(400).json({ error: "Select 1–2 images." });
+    if (!images?.length) return res.status(400).json({ error: "Select 2-6 images." });
 
     const sb = supabaseServer();
 
     const uploaded = [];
-    for (const file of images.slice(0, 2)) {
+    for (const file of images.slice(0, 6)) {
       const safeName = (file.originalFilename || "image").replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `listings/${Date.now()}-${safeName}`;
 
