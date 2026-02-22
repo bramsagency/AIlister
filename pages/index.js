@@ -1,8 +1,9 @@
-const [removeBg, setRemoveBg] = useState(false);
+// pages/index.js
 import { useState } from "react";
 
 export default function Home() {
   const [files, setFiles] = useState([]);
+  const [removeBg, setRemoveBg] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -16,6 +17,7 @@ export default function Home() {
 
     const form = new FormData();
     Array.from(files).slice(0, 2).forEach((f) => form.append("images", f));
+    form.append("remove_bg", removeBg ? "1" : "0");
 
     setLoading(true);
     try {
@@ -42,6 +44,16 @@ export default function Home() {
           multiple
           onChange={(e) => setFiles(e.target.files)}
         />
+
+        <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={removeBg}
+            onChange={(e) => setRemoveBg(e.target.checked)}
+          />
+          <span>Remove background (optional)</span>
+        </label>
+
         <button disabled={loading} style={{ padding: 12, cursor: "pointer" }}>
           {loading ? "Processing..." : "Generate Listing"}
         </button>
