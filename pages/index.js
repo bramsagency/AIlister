@@ -24,10 +24,7 @@ async function compressImage(file, { maxW = 1280, maxH = 1280, quality = 0.75 } 
     const ctx = canvas.getContext("2d");
     ctx.drawImage(img, 0, 0, w, h);
 
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", quality)
-    );
-
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
     if (!blob) throw new Error("Compression failed");
 
     return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
@@ -38,8 +35,8 @@ async function compressImage(file, { maxW = 1280, maxH = 1280, quality = 0.75 } 
 
 export default function Home() {
   const [files, setFiles] = useState([]);
-  const [removeBg, setRemoveBg] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [bgLoading, setBgLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
@@ -60,31 +57,29 @@ export default function Home() {
     setError("");
     setResult(null);
 
-if (files.length < 2) return setError("Select at least 2 photos.");
-if (files.length > 6) return setError("Max is 6 photos.");
+    if (files.length < 2) return setError("Select at least 2 photos.");
+    if (files.length > 6) return setError("Max is 6 photos.");
 
-const form = new FormData();
-const picked = Array.from(files).slice(0, 6);
-for (const f of picked) {
-  const small = await compressImage(f);
-  form.append("images", small);
-}
-    form.append("remove_bg", removeBg ? "1" : "0");
+    const form = new FormData();
+    const picked = Array.from(files).slice(0, 6);
+    for (const f of picked) {
+      const small = await compressImage(f);
+      form.append("images", small);
+    }
 
     setLoading(true);
     try {
       const res = await fetch("/api/listings/create", { method: "POST", body: form });
-const text = await res.text();
+      const text = await res.text();
 
-let data;
-try {
-  data = JSON.parse(text);
-} catch {
-  throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`);
-}
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`);
+      }
 
-if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
-setResult(data);
+      if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
       setResult(data);
     } catch (err) {
       setError(err.message);
@@ -93,10 +88,41 @@ setResult(data);
     }
   }
 
+  async function onRemoveBackground() {
+    setError("");
+    if (!result?.id) return setError("Missing listing id.");
+
+    setBgLoading(true);
+    try {
+      const res = await fetch("/api/listings/remove-bg", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listing_id: result.id }),
+      });
+
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`);
+      }
+
+      if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+
+      // Expect server to return updated listing record
+      setResult(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBgLoading(false);
+    }
+  }
+
   return (
     <main style={{ fontFamily: "system-ui", padding: 24, maxWidth: 720, margin: "0 auto" }}>
       <h1 style={{ marginBottom: 8 }}>Allister</h1>
-      <p style={{ marginTop: 0, opacity: 0.8 }}>Upload 2-6 photos → get a structured listing.</p>
+      <p style={{ marginTop: 0, opacity: 0.8 }}>Upload 2–6 photos → get a structured listing.</p>
 
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
         <input type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} />
@@ -113,29 +139,27 @@ setResult(data);
                   aspectRatio: "1 / 1",
                 }}
               >
-                <img
-                  src={p.url}
-                  alt={p.name}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
+                <img src={p.url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               </div>
             ))}
           </div>
         )}
 
-        <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <input
-            type="checkbox"
-            checked={removeBg}
-            onChange={(e) => setRemoveBg(e.target.checked)}
-          />
-          <span>Remove background (optional)</span>
-        </label>
-
         <button disabled={loading} style={{ padding: 12, cursor: "pointer" }}>
           {loading ? "Processing..." : "Generate Listing"}
         </button>
       </form>
+
+      {result?.id && (
+        <div style={{ marginTop: 12 }}>
+          <button disabled={bgLoading} onClick={onRemoveBackground} style={{ padding: 12, cursor: "pointer" }}>
+            {bgLoading ? "Removing background..." : "Remove background (optional)"}
+          </button>
+          <p style={{ marginTop: 8, opacity: 0.75 }}>
+            This runs after listing generation so users can see it’s slower.
+          </p>
+        </div>
+      )}
 
       {error && <p style={{ color: "crimson" }}>{error}</p>}
 
