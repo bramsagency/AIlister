@@ -1,6 +1,41 @@
 // pages/index.js
 import { useEffect, useMemo, useState } from "react";
 
+async function compressImage(file, { maxW = 1280, maxH = 1280, quality = 0.75 } = {}) {
+  const img = document.createElement("img");
+  const url = URL.createObjectURL(file);
+
+  try {
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = url;
+    });
+
+    let { width: w, height: h } = img;
+    const scale = Math.min(maxW / w, maxH / h, 1);
+    w = Math.round(w * scale);
+    h = Math.round(h * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", quality)
+    );
+
+    if (!blob) throw new Error("Compression failed");
+
+    return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export default function Home() {
   const [files, setFiles] = useState([]);
   const [removeBg, setRemoveBg] = useState(false);
@@ -29,7 +64,11 @@ if (files.length < 2) return setError("Select at least 2 photos.");
 if (files.length > 6) return setError("Max is 6 photos.");
 
 const form = new FormData();
-Array.from(files).slice(0, 6).forEach((f) => form.append("images", f));
+const picked = Array.from(files).slice(0, 6);
+for (const f of picked) {
+  const small = await compressImage(f);
+  form.append("images", small);
+}
     form.append("remove_bg", removeBg ? "1" : "0");
 
     setLoading(true);
