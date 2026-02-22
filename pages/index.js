@@ -9,7 +9,7 @@ export default function Home() {
   const [error, setError] = useState("");
 
   const previews = useMemo(() => {
-    return Array.from(files || []).slice(0, 2).map((f) => ({
+    return Array.from(files || []).slice(0, 6).map((f) => ({
       key: `${f.name}-${f.size}-${f.lastModified}`,
       name: f.name,
       url: URL.createObjectURL(f),
@@ -25,10 +25,11 @@ export default function Home() {
     setError("");
     setResult(null);
 
-    if (!files.length) return setError("Select 1–2 photos.");
+if (files.length < 2) return setError("Select at least 2 photos.");
+if (files.length > 6) return setError("Max is 6 photos.");
 
-    const form = new FormData();
-    Array.from(files).slice(0, 2).forEach((f) => form.append("images", f));
+const form = new FormData();
+Array.from(files).slice(0, 6).forEach((f) => form.append("images", f));
     form.append("remove_bg", removeBg ? "1" : "0");
 
     setLoading(true);
@@ -47,7 +48,7 @@ export default function Home() {
   return (
     <main style={{ fontFamily: "system-ui", padding: 24, maxWidth: 720, margin: "0 auto" }}>
       <h1 style={{ marginBottom: 8 }}>Allister</h1>
-      <p style={{ marginTop: 0, opacity: 0.8 }}>Upload 1–2 photos → get a structured listing.</p>
+      <p style={{ marginTop: 0, opacity: 0.8 }}>Upload 2-6 photos → get a structured listing.</p>
 
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
         <input type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} />
